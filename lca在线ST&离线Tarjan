@@ -1,0 +1,161 @@
+/*
+LCA（离线算法）
+主函数除建边外还应调用
+init();
+dir[1]=0;
+tarjan(1);
+*/
+
+const int maxn = 40010;
+struct node {
+	int u, v, w, lca, next;
+}edge[maxn * 2], edge1[805];
+
+int head[maxn], ip, head1[maxn], ip1;
+int m, n;
+int father[maxn], vis[maxn], dir[maxn];
+
+void init() {
+	memset(vis, 0, sizeof(vis));
+	memset(dir, 0, sizeof(dir));
+	memset(head, -1, sizeof(head));
+	memset(head1, -1, sizeof(head1));
+	ip = ip1 = 0;
+}
+
+
+void addedge(int u, int v, int w){
+	edge[ip].v = v, edge[ip].w = w, edge[ip].next = head[u], head[u] = ip++;
+}
+
+void addedge1(int u, int v, int w) {
+	edge1[ip1].u = u, edge1[ip1].v = v, edge1[ip1].lca = -1, edge1[ip1].next = head1[u], head1[u] = ip1++;
+}
+
+int Find(int x) {
+	if(father[x] == x) return x;
+	return father[x] = Find(father[x]);
+}
+
+void Union(int x, int y) {
+	x = Find(x); y = Find(y);
+	if(x != y) father[y] = x;
+}
+
+void tarjan(int u) {
+	vis[u] = 1;
+	father[u] = u;
+	for(int i = head[u]; i != -1; i = edge[i].next) {
+		int v = edge[i].v;
+		int w = edge[i].w;
+		if(!vis[v]) {
+			dir[v] = dir[u] + w;
+			tarjan(v);
+			Union(u, v);
+		}
+	}
+	for(int i = head1[u]; i != -1; i = edge1[i].next) {
+		int v = edge1[i].v;
+		if(vis[v]) {
+			edge[i].lca = edge1[i ^ 1].lca = father[Find(v)];
+		}
+	}
+}
+
+//在线ST
+const int maxn = 1000;
+const int INF = 0x3f3f3f3f;
+struct node{
+	int v, w;
+};
+struct lca_rmq{
+
+
+	// rmq
+	int d[maxn][20];
+	void init_rmq(int a[], int n) {
+		for(int i = 1; i <= n; i++) d[0][i] = i;
+		for(int i = 1; (1 << i) <= n; i++)
+			for(int j = 1; j + (1 << i) - 1 <= n; j++)
+				d[i][j] = a[d[i - 1][j]] < a[d[i - 1][j + (1 << (i - 1))]] ? d[i - 1][j] : d[i - 1][j + i << (i - 1)];
+	}
+	int rmq(int l, int r, int a[]) {
+		int k = log(1.0 * (r - l + 1)) / log(2.0);
+		return a[d[k][l]] < a[d[k][r - (1 << k) + 1]] ? d[k][l] : d[k][r - (1 << k) + 1];
+	}
+
+
+	vector<node>edge[maxn];
+	void add(int u, int v, int w){
+		edge[u].push_back(node{v, w});
+		edge[v].push_back(node{v, w});
+	}
+
+	int E[maxn * 2], R[maxn], D[maxn * 2], mn; // E对应的点 R对应点遍历出现的最早时间 D对应的层次
+	void dfs(int u, int f, int d) {
+		E[++mn] = u;
+		D[mn] = d;
+		R[u] = mn;
+		for(int i = 0; i < edge[u].size(); i++) {
+			int v = edge[u][i].v;
+			if(v == f) continue;
+			dfs(v, u, d + 1);
+			E[++mn] = u;
+			D[mn] = d;
+		}
+	}
+
+	int deep[maxn]; // root到各个点的距离预处理
+	void getd(int u, int f, int w) {
+		deep[u] = w;
+		for(int i = 0; i < edge[u].size(); i++) {
+			int v = edge[u][i].v;
+			if(v == f) continue;
+			getd(v, u, w + edge[u][i].w);
+		}
+	}
+	
+	void init_lca() {
+		mn = 0;
+		memset(R, 0, sizeof(R));
+		dfs(1, -1, 0);
+		init_rmq(D, mn);
+		getd(1, -1, 0);
+	}
+
+	int lca(int u, int v) {
+		if(R[u] > R[v]) return E[rmq(R[v], R[u], D)];
+		else return E[rmq(R[u], R[v], D)];
+	}
+	int getDis(int u, int v) {
+		int f = lca(u, v);
+		return deep[u] + deep[v] - deep[f] * 2;
+	}
+
+	int done(int x, int y, int z) {
+		int ans = INF, res = 0;
+		int lca1, lca2;
+
+		lca1 = lca(x, y);
+		res = deep[x] + deep[y] - deep[lca1] * 2;
+		lca2 = lca(lca1, z);
+		res += deep[lca1] + deep[z] - deep[lca2] * 2;
+		ans = min(ans, res);
+
+		lca1=lca(x,z);
+        res=deep[x]+deep[z]-deep[lca1]*2;
+        lca2=lca(lca1,y);
+        res+=deep[lca1]+deep[y]-deep[lca2]*2;
+        ans=min(ans,res);
+
+        lca1=lca(y,z);
+        res=deep[y]+deep[z]-deep[lca1]*2;
+        lca2=lca(lca1,x);
+        res+=deep[lca1]+deep[x]-deep[lca2]*2;
+        ans=min(ans,res);
+
+		return ans;
+	}
+};
+
+
